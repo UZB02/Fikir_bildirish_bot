@@ -49,10 +49,9 @@ bot.on("message", async (ctx) => {
 
 // 💬 Callback
 bot.on("callback_query", async (ctx) => {
-  // Callbackga har holda darhol javob yuboramiz, hatto kechikkan bo‘lsa ham
-  ctx.answerCbQuery().catch(() => {}); // ❌ xato chiqmasin
-
+  ctx.answerCbQuery().catch(() => {});
   const data = ctx.callbackQuery.data;
+
   if (data.startsWith("reply_")) {
     const userId = data.split("_")[1];
     waitingForReply[ADMIN_ID] = userId;
@@ -63,15 +62,26 @@ bot.on("callback_query", async (ctx) => {
   }
 });
 
-
-
 // 🌐 Express server
 const app = express();
+app.use(express.json());
+
+// Bot webhook endpoint
+app.use(bot.webhookCallback("/secret-path"));
+
+// Home route
 app.get("/", (req, res) => res.send("Bot ishlayapti ✅"));
-app.listen(process.env.PORT || 3000, async () => {
-  console.log(`✅ Web server ishga tushdi portda: ${process.env.PORT || 3000}`);
-  await bot.launch();
-  console.log("🤖 Bot ishga tushdi!");
+
+// Web serverni ishga tushiramiz
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+  console.log(`✅ Web server ishga tushdi portda: ${PORT}`);
+
+  if (process.env.WEBHOOK_URL) {
+    const webhookUrl = `${process.env.WEBHOOK_URL}/secret-path`;
+    await bot.telegram.setWebhook(webhookUrl);
+    console.log("🌐 Webhook o‘rnatildi:", webhookUrl);
+  }
 });
 
 // === Auto-ping (Render Free tarifida uxlab qolmasligi uchun) ===
