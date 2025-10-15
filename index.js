@@ -5,6 +5,7 @@ import { Telegraf, Markup } from "telegraf";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const ADMIN_ID = process.env.ADMIN_ID;
+const app = express();
 
 let waitingForReply = {};
 
@@ -15,7 +16,7 @@ bot.start((ctx) => {
   );
 });
 
-// 🟡 Foydalanuvchidan xabar olish
+// 🟡 Xabarlar
 bot.on("message", async (ctx) => {
   const user = ctx.from;
   const text = ctx.message.text;
@@ -51,11 +52,9 @@ bot.on("message", async (ctx) => {
 bot.on("callback_query", async (ctx) => {
   ctx.answerCbQuery().catch(() => {});
   const data = ctx.callbackQuery.data;
-
   if (data.startsWith("reply_")) {
     const userId = data.split("_")[1];
     waitingForReply[ADMIN_ID] = userId;
-
     await ctx.reply(
       `✍️ Endi foydalanuvchiga yozmoqchi bo‘lgan javobingizni yuboring.\nFoydalanuvchi ID: ${userId}`
     );
@@ -63,31 +62,24 @@ bot.on("callback_query", async (ctx) => {
 });
 
 // 🌐 Express server
-const app = express();
-app.use(express.json());
-
-// Bot webhook endpoint
-app.use(bot.webhookCallback("/secret-path"));
-
-// Home route
 app.get("/", (req, res) => res.send("Bot ishlayapti ✅"));
+app.use(express.json());
+app.use(bot.webhookCallback(`/secret-path`)); // ⚡ secret path
 
-// Web serverni ishga tushiramiz
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  console.log(`✅ Web server ishga tushdi portda: ${PORT}`);
+const PORT = process.env.PORT || 10000;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
-  if (process.env.WEBHOOK_URL) {
-    const webhookUrl = `${process.env.WEBHOOK_URL}/secret-path`;
-    await bot.telegram.setWebhook(webhookUrl);
-    console.log("🌐 Webhook o‘rnatildi:", webhookUrl);
-  }
+// 🧩 Webhook o‘rnatish
+bot.telegram.setWebhook(`${WEBHOOK_URL}/secret-path`);
+
+app.listen(PORT, () => {
+  console.log(`✅ Server ishlayapti: ${PORT}`);
 });
 
 // === Auto-ping (Render Free tarifida uxlab qolmasligi uchun) ===
-if (process.env.WEBHOOK_URL) {
+if (WEBHOOK_URL) {
   setInterval(() => {
-    fetch(`${process.env.WEBHOOK_URL}/`)
+    fetch(`${WEBHOOK_URL}/`)
       .then(() =>
         console.log("🔄 Auto-ping yuborildi:", new Date().toLocaleString())
       )
